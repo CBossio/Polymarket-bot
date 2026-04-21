@@ -1,0 +1,16 @@
+# Credenciales y variables de entorno (¡CRÍTICO!)
+.env
+
+# Logs y bases de datos locales
+logs/
+*.jsonl
+
+# Archivos de caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Entornos virtuales (si usas alguno localmente)
+venv/
+env/
+.venv/

@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker exec polymarket-python *)",
+      "Bash(docker compose *)",
+      "Bash(curl *)",
+      "Bash(python3 -c \"import json,sys; m=json.load\\(sys.stdin\\); [print\\(json.dumps\\({k: v for k,v in x.items\\(\\) if k in ['conditionId','question','createdAt','startDate','endDate','enableOrderBook','liquidityClob']}, indent=2\\)\\) for x in m[:2]]\")",
+      "Bash(python3 -c \"import json,sys; data=sys.stdin.read\\(\\); m=json.loads\\(data\\); [print\\(json.dumps\\({k: v for k,v in x.items\\(\\) if k in ['conditionId','question','createdAt','startDate','endDate','enableOrderBook','liquidityClob']}, indent=2\\)\\) for x in m[:2]]\")",
+      "Bash(python3 -c \"import json,sys; decs=json.load\\(sys.stdin\\); [print\\(f'{d[\\\\\"decision\\\\\"]:6} ticks={d[\\\\\"ticks\\\\\"]:3} vwap={d[\\\\\"vwap\\\\\"]} reason={d[\\\\\"reason\\\\\"][:60]}'\\) for d in decs[:15]]\")",
+      "Bash(docker exec *)",
+      "Bash(xargs -r docker exec -i polymarket-redis redis-cli DEL)",
+      "Bash(python3 -c ' *)"
+    ]
+  }
+}
