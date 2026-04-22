@@ -78,7 +78,7 @@ class RedisManager:
             # Update the sim_trade if it exists in timeline
             trades = self.get_sim_trades(limit=500)
             for t in trades:
-                if t.get("condition_id") == condition_id and t.get("result") == "OPEN":
+                if t.get("condition_id") == condition_id and t.get("result") == "OPEN" and t.get("side") == "BUY":
                     self.update_sim_trade(t["trade_id"], {
                         "result": "SOLD",
                         "pnl": round(pnl, 2),

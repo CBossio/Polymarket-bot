@@ -70,6 +70,9 @@ class OrderExecutor:
                 f"[DRY RUN] FOK {side} {size_usdc:.2f} USDC @ {price:.4f} "
                 f"on {token_id[:16]}..."
             )
+        
+        trade_id = f"mock_{int(time.time() * 1000)}"
+        if side == "BUY":
             trade = {
                 "timestamp": time.time(),
                 "market_question": market_meta.get("question", "Unknown") if market_meta else "Unknown",
@@ -89,6 +92,7 @@ class OrderExecutor:
                 "mode": "DRY_RUN" if self.dry_run else "LIVE",
             }
             trade_id = self._redis.record_sim_trade(trade)
+            
             return {
                 "success": True,
                 "dry_run": True,
