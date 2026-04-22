@@ -23,7 +23,7 @@ from risk_manager import RiskManager
 from redis_manager import RedisManager
 from config import (
     SCANNER_INTERVAL_SECS, BANKROLL_USDC,
-    TAKE_PROFIT_MULTIPLIER, PROFIT_CHECK_INTERVAL_SECS, GAMMA_API_BASE,
+    TAKE_PROFIT_MULTIPLIER, STOP_LOSS_THRESHOLD, PROFIT_CHECK_INTERVAL_SECS, GAMMA_API_BASE,
 )
 
 logging.basicConfig(
@@ -155,7 +155,7 @@ def _get_current_bid(token_id: str) -> float:
 
 
 async def profit_monitor_loop():
-    """Checks open positions every minute and takes profit at TAKE_PROFIT_MULTIPLIER×."""
+    """Checks open positions every minute and takes profit or cuts losses."""
     while not _shutdown:
         await asyncio.sleep(PROFIT_CHECK_INTERVAL_SECS)
         positions = redis_mgr.get_open_positions()
@@ -198,6 +198,26 @@ async def profit_monitor_loop():
                 else:
                     logger.warning(f"[TakeProfit] SELL FOK failed (price moved): {result.get('error')}")
 
+        elif current_price <= STOP_LOSS_THRESHOLD:
+            logger.info(
+                f"[StopLoss] 🛑 {pos['condition_id'][:12]} | "
+                f"{entry_price:.3f} → {current_price:.3f} (dropped below {STOP_LOSS_THRESHOLD:.2f}) — CUTTING LOSSES"
+            )
+            sell_size = round(contracts * current_price, 2)
+            result = executor.place_fok_order(
+                token_id=token_id,
+                price=current_price,
+                size_usdc=sell_size,
+                side="SELL",
+                market_meta={"condition_id": pos["condition_id"], "question": "Stop-loss SELL"},
+            )
+            if result.get("success"):
+                pnl = round(contracts * current_price - pos.get("size_usdc", 0), 2)
+                redis_mgr.close_position_take_profit(pos["condition_id"], current_price, pnl)
+                logger.info(f"[StopLoss] Closed. PnL=${pnl:.2f}")
+            else:
+                logger.warning(f"[StopLoss] SELL FOK failed: {result.get('error')}")
+
 
 def _handle_shutdown(sig, frame):
     global _shutdown
@@ -211,7 +231,7 @@ async def main():
     print("  POLYMARKET DELAYED MIRROR BOT  —  Sports Markets POC")
     print("=" * 62)
     print(f"  Bankroll : ${BANKROLL_USDC:.2f} USDC")
-    print(f"  Strategy : 120s observation + 70% consensus threshold")
+    print(f"  Strategy : 120s observation + 65% consensus threshold")
     print(f"  Execution: {'DRY RUN (no credentials)' if executor.dry_run else 'LIVE — orders will be placed'}")
     print("=" * 62 + "\n")
 
