@@ -198,25 +198,25 @@ async def profit_monitor_loop():
                 else:
                     logger.warning(f"[TakeProfit] SELL FOK failed (price moved): {result.get('error')}")
 
-        elif current_price <= STOP_LOSS_THRESHOLD:
-            logger.info(
-                f"[StopLoss] 🛑 {pos['condition_id'][:12]} | "
-                f"{entry_price:.3f} → {current_price:.3f} (dropped below {STOP_LOSS_THRESHOLD:.2f}) — CUTTING LOSSES"
-            )
-            sell_size = round(contracts * current_price, 2)
-            result = executor.place_fok_order(
-                token_id=token_id,
-                price=current_price,
-                size_usdc=sell_size,
-                side="SELL",
-                market_meta={"condition_id": pos["condition_id"], "question": "Stop-loss SELL"},
-            )
-            if result.get("success"):
-                pnl = round(contracts * current_price - pos.get("size_usdc", 0), 2)
-                redis_mgr.close_position_take_profit(pos["condition_id"], current_price, pnl)
-                logger.info(f"[StopLoss] Closed. PnL=${pnl:.2f}")
-            else:
-                logger.warning(f"[StopLoss] SELL FOK failed: {result.get('error')}")
+                elif current_price <= STOP_LOSS_THRESHOLD:
+                    logger.info(
+                        f"[StopLoss] 🛑 {pos['condition_id'][:12]} | "
+                        f"{entry_price:.3f} → {current_price:.3f} (dropped below {STOP_LOSS_THRESHOLD:.2f}) — CUTTING LOSSES"
+                    )
+                    sell_size = round(contracts * current_price, 2)
+                    result = executor.place_fok_order(
+                        token_id=token_id,
+                        price=current_price,
+                        size_usdc=sell_size,
+                        side="SELL",
+                        market_meta={"condition_id": pos["condition_id"], "question": "Stop-loss SELL"},
+                    )
+                    if result.get("success"):
+                        pnl = round(contracts * current_price - pos.get("size_usdc", 0), 2)
+                        redis_mgr.close_position_take_profit(pos["condition_id"], current_price, pnl)
+                        logger.info(f"[StopLoss] Closed. PnL=${pnl:.2f}")
+                    else:
+                        logger.warning(f"[StopLoss] SELL FOK failed: {result.get('error')}")
 
 
 def _handle_shutdown(sig, frame):
