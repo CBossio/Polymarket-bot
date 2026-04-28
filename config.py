@@ -19,9 +19,10 @@ CLOB_WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
 SPORTS_TAG_IDS = [1, 2, 3, 4, 6, 9, 64]
 
 # --- Strategy Parameters ---
-MIN_LIQUIDITY_USD = 300             # Minimum liquidity to START observing (filters out ghost markets early)
-MIN_TRADE_LIQUIDITY_USD = 500       # Minimum liquidity to actually PLACE an order
+MIN_LIQUIDITY_USD = 200             # Minimum liquidity to START observing (filters out ghost markets early)
+MIN_TRADE_LIQUIDITY_USD = 300       # Minimum liquidity to actually PLACE an order
 CONSENSUS_THRESHOLD = 0.65          # Probability must exceed 65% to trigger buy
+MAX_CONSENSUS_THRESHOLD = 0.85      # Probability must NOT exceed 85% (terrible risk/reward ratio)
 OBSERVATION_WINDOW_SECS = 1200      # 20-minute observation window
 MIN_PRICE_MOVE = 0.02               # Required mid-price move during window (when starting below threshold)
 MIN_HOURS_TO_EVENT = 1              # Skip markets starting in < 1h (avoids live/in-play slippage)

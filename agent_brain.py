@@ -7,7 +7,7 @@ from redis_manager import RedisManager
 from risk_manager import RiskManager
 from order_executor import OrderExecutor
 from config import (
-    CONSENSUS_THRESHOLD, FOCUS_RATIO_NOISE_THRESHOLD,
+    CONSENSUS_THRESHOLD, MAX_CONSENSUS_THRESHOLD, FOCUS_RATIO_NOISE_THRESHOLD,
     MAX_POSITION_PCT, MIN_POSITION_USDC,
     MIN_TRADE_LIQUIDITY_USD, MAX_SPREAD, CLOB_API_BASE, 
     MAX_POSITION_USDC,
@@ -178,6 +178,11 @@ def node_analyst(state: GraphState) -> dict:
         return {**base, "decision": "SKIP",
                 "reason": f"Price {consensus:.0%} — market likely already resolved, no upside"}
 
+    # Too expensive: Terrible risk/reward ratio
+    if consensus > MAX_CONSENSUS_THRESHOLD:
+        return {**base, "decision": "SKIP",
+                "reason": f"Price {consensus:.1%} > {MAX_CONSENSUS_THRESHOLD:.0%} — terrible risk/reward ratio, skipping"}
+
     # Wide spread = market makers unsure, risk of bad fill
     if spread > MAX_SPREAD:
         return {**base, "decision": "SKIP",
@@ -217,14 +222,15 @@ def node_analyst(state: GraphState) -> dict:
 # --- Node 3: Position Sizer (scaled fraction) ---
 # Kelly requires an independent probability estimate separate from the market price.
 # Since we use the market price as our signal, Kelly always yields ~0 edge.
-# Instead: scale linearly from 0% at CONSENSUS_THRESHOLD to MAX_POSITION_PCT at 100%.
+# Instead: scale linearly from 0% at CONSENSUS_THRESHOLD to MAX_POSITION_PCT at MAX_CONSENSUS_THRESHOLD.
 
 def node_sizer(state: GraphState) -> dict:
     if state.get("decision") != "BUY":
         return {"size_fraction": 0.0, "position_size_usdc": 0.0}
 
     p = state["avg_probability"]
-    signal_strength = (p - CONSENSUS_THRESHOLD) / (1.0 - CONSENSUS_THRESHOLD)
+    signal_range = MAX_CONSENSUS_THRESHOLD - CONSENSUS_THRESHOLD
+    signal_strength = (p - CONSENSUS_THRESHOLD) / signal_range if signal_range > 0 else 0
     fraction = min(signal_strength, 1.0) * MAX_POSITION_PCT
     position_usdc = min(state.get("bankroll", 0.0) * fraction, MAX_POSITION_USDC)
 
