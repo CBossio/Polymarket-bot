@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polymark Pro Terminal</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📈</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Public+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root {
+    --bg-main: #0b0f1a;
+    --bg-card: #141a29;
+    --accent-blue: #3b82f6;
+    --text-muted: #64748b;
+    --border-color: rgba(255, 255, 255, 0.05);
+  }
+  body { 
+    background-color: var(--bg-main); 
+    color: #f1f5f9; 
+    font-family: 'Public Sans', sans-serif;
+    margin: 0;
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  
+  /* Sidebar-like layout containers */
+  .panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 4px; /* More industrial square look */
+  }
+
+  /* Table density */
+  th { background: #1c2536; color: var(--text-muted); font-size: 10px; font-weight: 800; letter-spacing: 0.05em; padding: 10px 12px; border-bottom: 1px solid #2d3748; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border-color); font-size: 12px; }
+  
+  /* Badges */
+  .badge { padding: 2px 8px; border-radius: 2px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+  .b-won { color: #10b981; background: rgba(16, 185, 129, 0.1); }
+  .b-lost { color: #f43f5e; background: rgba(244, 63, 94, 0.1); }
+  .b-open { color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+  .b-sold { color: #a78bfa; background: rgba(167, 139, 250, 0.1); }
+  .b-skip { color: #94a3b8; background: rgba(148, 163, 184, 0.1); }
+
+  /* Custom Inputs */
+  .terminal-input {
+    background: #0f172a;
+    border: 1px solid #334155;
+    color: white;
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    outline: none;
+  }
+  .terminal-input:focus { border-color: var(--accent-blue); }
+
+  /* Filters */
+  .filter-tab {
+    padding: 6px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .filter-tab:hover { color: white; }
+  .filter-tab.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #334155; }
+  ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+  /* Header Stats */
+  .kpi-box { border-right: 1px solid var(--border-color); }
+  .kpi-box:last-child { border-right: none; }
+</style>
+</head>
+<body class="flex flex-col min-h-screen h-screen overflow-hidden">
+
+<!-- Main Header / Navigation -->
+<nav class="h-14 border-b border-white/5 flex items-center justify-between px-6 bg-[#0f172a]">
+  <div class="flex items-center gap-4">
+    <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center font-bold text-lg italic">P</div>
+    <h1 class="font-extrabold text-sm tracking-tighter uppercase">Polymark <span class="text-blue-500">Terminal</span></h1>
+    <div class="ml-6 flex items-center gap-1 bg-slate-900 border border-white/5 rounded px-3 py-1">
+      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+      <span class="text-[10px] font-bold text-emerald-500 ml-1 uppercase tracking-widest">Live Engine</span>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-6">
+    <div id="modeContainer" class="flex items-center gap-3">
+      <span id="modeLabel" class="text-[10px] font-black text-amber-500 uppercase tracking-widest">DRY RUN</span>
+      <button onclick="toggleMode()" class="text-[9px] font-bold bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded border border-white/10">SWITCH</button>
+    </div>
+    <div class="text-[10px] text-slate-500 font-mono" id="lastUpdate">00:00:00</div>
+  </div>
+</nav>
+
+<!-- KPI Top Bar -->
+<header class="grid grid-cols-6 border-b border-white/5 bg-[#0b0f1a]">
+  <div class="kpi-box p-4 px-6">
+    <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">Total P&L</p>
+    <p id="totalPnl" class="text-xl font-bold mono">—</p>
+    <p id="roiPct" class="text-[10px] font-medium text-slate-400 mt-1"></p>
+  </div>
+  <div class="kpi-box p-4 px-6">
+    <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">Success Rate</p>
+    <p id="winRate" class="text-xl font-bold text-blue-500 mono">—</p>
+    <p id="wlRecord" class="text-[10px] font-medium text-slate-400 mt-1"></p>
+  </div>
+  <div class="kpi-box p-4 px-6">
+    <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">Daily Gain</p>
+    <p id="dailyPnl" class="text-xl font-bold mono">—</p>
+  </div>
+  <div class="kpi-box p-4 px-6">
+    <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">Active Observations</p>
+    <p id="activeObs" class="text-xl font-bold text-cyan-400 mono">—</p>
+  </div>
+  <div class="kpi-box p-4 px-6">
+    <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">Deployed Capital</p>
+    <p id="totalInvested" class="text-xl font-bold text-purple-400 mono">—</p>
+  </div>
+  <div class="kpi-box p-4 px-6">
+    <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">System Health</p>
+    <div class="flex items-center gap-2 mt-1">
+      <span class="text-xs font-bold text-slate-300">Lat: <span class="text-emerald-500">14ms</span></span>
+      <span class="text-xs font-bold text-slate-300 ml-2">CPU: <span class="text-blue-400">4%</span></span>
+    </div>
+  </div>
+</header>
+
+<!-- Main Workspace -->
+<main class="flex-grow grid grid-cols-12 gap-px bg-white/5 overflow-hidden">
+  
+  <!-- Left Side: Trades & Decisions -->
+  <div class="col-span-12 lg:col-span-9 flex flex-col overflow-hidden bg-[#0b0f1a]">
+    
+    <!-- Top Row: Chart -->
+    <div class="h-1/3 p-4 border-b border-white/5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+          <span class="w-1.5 h-1.5 bg-blue-500"></span> Cumulative Portfolio Analytics
+        </h3>
+      </div>
+      <div class="h-full pb-6">
+        <canvas id="pnlChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Bottom Row: Multi-Tab Tables -->
+    <div class="flex-grow flex flex-col overflow-hidden">
+      <!-- Tabs / Filters -->
+      <div class="h-12 border-b border-white/5 flex items-center justify-between px-4 bg-[#0f172a]/50">
+        <div class="flex gap-2" id="tradeFilters">
+          <div class="filter-tab active" data-status="all" onclick="setStatusFilter('all')">ALL POSITIONS</div>
+          <div class="filter-tab" data-status="WON" onclick="setStatusFilter('WON')">WON</div>
+          <div class="filter-tab" data-status="LOST" onclick="setStatusFilter('LOST')">LOST</div>
+          <div class="filter-tab" data-status="SOLD" onclick="setStatusFilter('SOLD')">SOLD</div>
+          <div class="filter-tab" data-status="OPEN" onclick="setStatusFilter('OPEN')">OPEN</div>
+        </div>
+        <div class="flex items-center gap-4">
+          <input type="text" id="tradeSearch" placeholder="Search markets..." class="terminal-input w-64" onkeyup="applyFilters()">
+        </div>
+      </div>
+
+      <!-- Scrollable Table Area -->
+      <div class="flex-grow overflow-auto custom-scroll">
+        <table class="w-full">
+          <thead>
+            <tr>
+              <th>EXECUTION TIME</th>
+              <th>MARKET & OUTCOME</th>
+              <th>CLOSES AT</th>
+              <th>SIDE</th>
+              <th>SIZE</th>
+              <th>ENTRY</th>
+              <th>POTENTIAL</th>
+              <th>STATUS</th>
+              <th>NET P&L</th>
+            </tr>
+          </thead>
+          <tbody id="tradeTable" class="mono">
+            <!-- Data injected here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Side: Scanner & Activity (Bloomberg Style) -->
+  <div class="col-span-12 lg:col-span-3 flex flex-col bg-[#0f172a]/30 border-l border-white/5 overflow-hidden">
+    
+    <!-- Scanner Panel -->
+    <div class="flex-grow flex flex-col overflow-hidden">
+      <div class="h-10 px-4 border-b border-white/5 flex items-center bg-[#1c2536]">
+        <h3 class="text-[9px] font-black uppercase tracking-widest text-cyan-400">Scanner Activity</h3>
+      </div>
+      <div id="activeList" class="flex-grow overflow-auto custom-scroll p-2 space-y-px">
+        <!-- Scans injected here -->
+      </div>
+    </div>
+
+    <!-- Decision Log (Mini) -->
+    <div class="h-1/3 flex flex-col border-t border-white/5 overflow-hidden bg-[#0b0f1a]">
+      <div class="h-10 px-4 border-b border-white/5 flex items-center bg-[#1c2536]">
+        <h3 class="text-[9px] font-black uppercase tracking-widest text-slate-400">Decision Stream</h3>
+      </div>
+      <div class="flex-grow overflow-auto custom-scroll">
+        <table class="w-full text-[10px]">
+          <tbody id="decisionTable" class="mono">
+            <!-- Decisions injected here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+let pnlChart = null;
+let currentStatusFilter = 'all';
+let currentMode = 'dry_run';
+let lastResolvedCount = -1;
+
+function setStatusFilter(s) {
+  currentStatusFilter = s;
+  document.querySelectorAll('.filter-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.status === s);
+  });
+  applyFilters();
+}
+
+function applyFilters() {
+  const q = document.getElementById('tradeSearch').value.toLowerCase();
+  document.querySelectorAll('#tradeTable tr').forEach(tr => {
+    if (tr.cells.length <= 1) return;
+    const status = tr.getAttribute('data-status') || '';
+    const matchQ = tr.innerText.toLowerCase().includes(q);
+    const matchS = currentStatusFilter === 'all' || status === currentStatusFilter;
+    tr.style.display = (matchQ && matchS) ? '' : 'none';
+  });
+}
+
+async function update() {
+  try {
+    const statsRes = await fetch('/api/stats');
+    const stats = await statsRes.json();
+    
+    // KPIs
+    const pnlEl = document.getElementById('totalPnl');
+    pnlEl.innerText = (stats.total_pnl >= 0 ? '+' : '-') + '$' + Math.abs(stats.total_pnl).toFixed(2);
+    pnlEl.className = 'text-xl font-bold mono ' + (stats.total_pnl >= 0 ? 'text-emerald-500' : 'text-rose-500');
+    
+    document.getElementById('roiPct').innerText = 'ROI: ' + (stats.roi_pct >= 0 ? '+' : '') + stats.roi_pct.toFixed(2) + '%';
+    document.getElementById('winRate').innerText = stats.win_rate + '%';
+    document.getElementById('wlRecord').innerText = stats.won + 'W / ' + stats.lost + 'L';
+    
+    const dpnlEl = document.getElementById('dailyPnl');
+    dpnlEl.innerText = (stats.daily_pnl >= 0 ? '+' : '-') + '$' + Math.abs(stats.daily_pnl).toFixed(2);
+    dpnlEl.className = 'text-xl font-bold mono ' + (stats.daily_pnl >= 0 ? 'text-emerald-500' : 'text-rose-500');
+    
+    document.getElementById('activeObs').innerText = stats.active_observations;
+    document.getElementById('totalInvested').innerText = '$' + stats.total_invested.toFixed(0);
+    
+    document.getElementById('modeLabel').innerText = stats.mode.toUpperCase();
+    currentMode = stats.mode;
+    document.getElementById('lastUpdate').innerText = new Date().toLocaleTimeString();
+
+    if (stats.resolved_trades !== lastResolvedCount) {
+      lastResolvedCount = stats.resolved_trades;
+      drawChart();
+    }
+
+    // Trades Table
+    const trades = await (await fetch('/api/trades')).json();
+    document.getElementById('tradeTable').innerHTML = trades.map(t => {
+      const s = t.result || 'OPEN';
+      const bCls = s === 'WON' ? 'b-won' : (s === 'LOST' ? 'b-lost' : (s === 'SOLD' ? 'b-sold' : 'b-open'));
+      const potential = t.potential_profit ? `+$${t.potential_profit.toFixed(2)}` : '—';
+      const pnl = t.pnl ? `${t.pnl >= 0 ? '+' : '-'}$${Math.abs(t.pnl).toFixed(2)}` : '—';
+      const pnlColor = t.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500';
+      const marketLink = t.market_url ? `<a href="${t.market_url}" target="_blank" class="text-blue-500 hover:underline">↗</a>` : '';
+
+      let closesAt = '—';
+      if (t.end_date) {
+        const ed = new Date(t.end_date);
+        if (!isNaN(ed)) {
+          closesAt = ed.toLocaleString('es-ES', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+        }
+      }
+
+      return `<tr data-status="${s}">
+        <td class="text-slate-500 text-[10px]">${new Date(t.timestamp * 1000).toLocaleString('es-ES', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</td>
+        <td>
+          <div class="font-bold text-slate-200">${t.market_question} ${marketLink}</div>
+          <div class="text-[10px] text-slate-500 uppercase mt-0.5">${t.picked_outcome}</div>
+        </td>
+        <td class="text-slate-400 font-bold text-[10px]">${closesAt}</td>
+        <td><span class="text-[10px] font-bold text-slate-400">BUY</span></td>
+        <td class="font-bold">$${t.size_usdc.toFixed(2)}</td>
+        <td class="text-slate-400 font-bold">${(t.price*100).toFixed(1)}%</td>
+        <td class="text-emerald-600">${potential}</td>
+        <td><span class="badge ${bCls}">${s}</span></td>
+        <td class="font-bold ${pnlColor}">${pnl}</td>
+      </tr>`;
+    }).join('');
+    applyFilters();
+
+    // Decision Log
+    const decs = await (await fetch('/api/decisions')).json();
+    document.getElementById('decisionTable').innerHTML = decs.slice(0,25).map(d => {
+      const badge = d.decision === 'BUY' ? 'text-emerald-500' : (d.decision === 'BLOCKED' ? 'text-rose-500' : 'text-slate-500');
+      return `<tr class="border-b border-white/5">
+        <td class="p-2 text-slate-600">${new Date(d.timestamp * 1000).toLocaleTimeString()}</td>
+        <td class="p-2 font-bold ${badge}">${d.decision}</td>
+        <td class="p-2">
+          <div class="truncate max-w-[120px] text-slate-300" title="${d.market}">${d.market}</div>
+          <div class="text-[9px] text-slate-600 truncate max-w-[120px]">${d.reason}</div>
+        </td>
+      </tr>`;
+    }).join('');
+
+    // Scans List
+    const active = await (await fetch('/api/active')).json();
+    document.getElementById('activeList').innerHTML = active.map(o => {
+      const pct = Math.min(100, Math.max(0, (o.remaining_s / (o.window_secs || 1200)) * 100));
+      return `<div class="p-3 bg-slate-800/40 border-b border-white/5">
+        <div class="flex justify-between items-start mb-1">
+          <p class="text-[10px] font-bold text-white truncate max-w-[180px]">${o.question}</p>
+          <span class="text-[9px] mono text-cyan-400 font-bold">${o.remaining_s}s</span>
+        </div>
+        <div class="flex justify-between text-[9px] mono text-slate-500 mb-2">
+          <span>VOL: $${(o.liquidity/1000).toFixed(1)}K</span>
+          <span>TICKS: ${o.tick_count || 0}</span>
+        </div>
+        <div class="w-full bg-black h-1 rounded-full overflow-hidden">
+          <div class="bg-cyan-500 h-full transition-all duration-1000" style="width: ${pct}%"></div>
+        </div>
+      </div>`;
+    }).join('');
+
+  } catch(e) { console.error(e); }
+}
+
+async function drawChart() {
+  const res = await fetch('/api/pnl_chart');
+  const d = await res.json();
+  const ctx = document.getElementById('pnlChart').getContext('2d');
+  if (pnlChart) pnlChart.destroy();
+  
+  const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+  gradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
+  gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+
+  pnlChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: d.labels,
+      datasets: [{
+        data: d.values,
+        borderColor: '#3b82f6',
+        borderWidth: 2,
+        backgroundColor: gradient,
+        fill: true,
+        tension: 0.1,
+        pointRadius: 2,
+        pointBackgroundColor: '#3b82f6'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false },
+        y: { grid: { color: 'rgba(255,255,255,0.02)' }, ticks: { color: '#475569', font: { size: 9, family: 'JetBrains Mono' } } }
+      }
+    }
+  });
+}
+
+async function toggleMode() {
+  const target = currentMode === 'live' ? 'dry_run' : 'live';
+  if (target === 'live' && !confirm('WARNING: Bot will execute REAL ORDERS on Polygon. Continue?')) return;
+  await fetch('/api/mode', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({mode: target})
+  });
+  update();
+}
+
+setInterval(update, 5000); // Faster refresh for terminal feel
+update();
+</script>
+</body>
+</html>
