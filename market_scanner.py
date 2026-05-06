@@ -99,6 +99,13 @@ def scan_for_sports_markets() -> list:
                     )
                     continue
 
+                # Semantic Filter: Ignore high-variance micro-markets (Spread, Over/Under, Handicap)
+                question_lower = m.get("question", "").lower()
+                high_variance_keywords = ["over/under", "o/u", "spread", "handicap"]
+                if any(kw in question_lower for kw in high_variance_keywords):
+                    logger.debug(f"[Scanner] Skipping high-variance market: {m.get('question','')[:50]}")
+                    continue
+
                 # Only process markets with a live CLOB order book
                 if not m.get("enableOrderBook", False):
                     continue

@@ -21,13 +21,13 @@ SPORTS_TAG_IDS = [1, 2, 3, 4, 6, 9, 64]
 # --- Strategy Parameters ---
 MIN_LIQUIDITY_USD = 200             # Minimum liquidity to START observing (filters out ghost markets early)
 MIN_TRADE_LIQUIDITY_USD = 300       # Minimum liquidity to actually PLACE an order
-CONSENSUS_THRESHOLD = 0.65          # Probability must exceed 65% to trigger buy
-MAX_CONSENSUS_THRESHOLD = 0.85      # Probability must NOT exceed 85% (terrible risk/reward ratio)
+CONSENSUS_THRESHOLD = 0.60          # Probability must exceed 60% to trigger buy
+MAX_CONSENSUS_THRESHOLD = 0.78      # Probability must NOT exceed 78% (terrible risk/reward ratio)
 OBSERVATION_WINDOW_SECS = 1200      # 20-minute observation window
-MIN_PRICE_MOVE = 0.02               # Required mid-price move during window (when starting below threshold)
+MIN_PRICE_MOVE = 0.015              # Required mid-price move during window (when starting below threshold)
 MIN_HOURS_TO_EVENT = 1              # Skip markets starting in < 1h (avoids live/in-play slippage)
 MAX_HOURS_TO_EVENT = 168            # Skip markets where game starts > 168h (1 week) from now
-CORR_BOOST_THRESHOLD = 0.60         # Min consensus for a correlated market to count as confirmation
+CORR_BOOST_THRESHOLD = 0.55         # Min consensus for a correlated market to count as confirmation
 FOCUS_RATIO_NOISE_THRESHOLD = 500   # FR above this = algorithmic noise, skip
 SCANNER_INTERVAL_SECS = 30          # Poll Gamma API every 30 seconds
 
