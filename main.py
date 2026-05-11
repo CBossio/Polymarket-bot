@@ -23,7 +23,7 @@ from risk_manager import RiskManager
 from redis_manager import RedisManager
 from config import (
     SCANNER_INTERVAL_SECS, BANKROLL_USDC,
-    TAKE_PROFIT_MULTIPLIER, STOP_LOSS_THRESHOLD, PROFIT_CHECK_INTERVAL_SECS, GAMMA_API_BASE,
+    TAKE_PROFIT_PCT, STOP_LOSS_PCT, PROFIT_CHECK_INTERVAL_SECS, GAMMA_API_BASE,
 )
 
 logging.basicConfig(
@@ -168,20 +168,21 @@ async def profit_monitor_loop():
             if not token_id or entry_price <= 0 or contracts <= 0:
                 continue
 
-            target_price = entry_price * TAKE_PROFIT_MULTIPLIER
+            target_price = entry_price * (1 + TAKE_PROFIT_PCT)
+            stop_price = entry_price * (1 - STOP_LOSS_PCT)
             current_price = _get_current_bid(token_id)
             if current_price <= 0:
                 continue
 
             logger.debug(
-                f"[TakeProfit] {pos['condition_id'][:12]} | "
-                f"entry={entry_price:.3f} current={current_price:.3f} target={target_price:.3f}"
+                f"[Monitor] {pos['condition_id'][:12]} | "
+                f"entry={entry_price:.3f} current={current_price:.3f} TP={target_price:.3f} SL={stop_price:.3f}"
             )
 
             if current_price >= target_price:
                 logger.info(
                     f"[TakeProfit] 🎯 {pos['condition_id'][:12]} | "
-                    f"{entry_price:.3f} → {current_price:.3f} ({current_price/entry_price:.1f}x) — SELLING"
+                    f"{entry_price:.3f} → {current_price:.3f} (+{TAKE_PROFIT_PCT:.0%}) — SELLING"
                 )
                 sell_size = round(contracts * current_price, 2)
                 result = executor.place_fok_order(
@@ -198,10 +199,10 @@ async def profit_monitor_loop():
                 else:
                     logger.warning(f"[TakeProfit] SELL FOK failed (price moved): {result.get('error')}")
 
-            elif current_price <= STOP_LOSS_THRESHOLD:
+            elif current_price <= stop_price:
                 logger.info(
                     f"[StopLoss] 🛑 {pos['condition_id'][:12]} | "
-                    f"{entry_price:.3f} → {current_price:.3f} (dropped below {STOP_LOSS_THRESHOLD:.2f}) — CUTTING LOSSES"
+                    f"{entry_price:.3f} → {current_price:.3f} (-{STOP_LOSS_PCT:.0%}) — CUTTING LOSSES"
                 )
                 sell_size = round(contracts * current_price, 2)
                 result = executor.place_fok_order(

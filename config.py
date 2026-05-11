@@ -39,10 +39,10 @@ MAX_SLIPPAGE_PCT = 0.02             # Abort order if slippage > 2%
 
 # --- Position Sizing ---
 MIN_POSITION_USDC = 2.0             # Don't place orders below this size
-MAX_SPREAD = 0.25                   # Skip if bid-ask spread > 25% (market too uncertain)
+MAX_SPREAD = 0.08                   # Tightened from 0.25 to 8% to prevent bad fills
 MAX_MARKET_AGE_HOURS = 72           # Ignore markets created more than N hours ago
-TAKE_PROFIT_MULTIPLIER = 2.0        # Auto-sell when position value reaches this × entry price
-STOP_LOSS_THRESHOLD = 0.55          # Auto-sell (cut losses) if win probability drops below 55%
+TAKE_PROFIT_PCT = 0.15              # Sell when price rises 15% from entry (e.g. 0.60 -> 0.69)
+STOP_LOSS_PCT = 0.10                # Sell when price drops 10% from entry (e.g. 0.60 -> 0.54)
 PROFIT_CHECK_INTERVAL_SECS = 60     # How often to check open positions for take-profit
 
 # --- Blockchain / Polymarket Auth ---
